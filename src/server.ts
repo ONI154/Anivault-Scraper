@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
-import path from 'path';
+import { timingSafeEqual } from 'crypto';
 import routes from './routes';
 import discordRelay from './discord-relay';
 import imageMigrator from './image-migrator';
@@ -11,8 +11,50 @@ const PORT = parseInt(process.env.PORT || '3000');
 
 app.set('trust proxy', 1);
 
-app.use(cors());
+const allowedOrigins = new Set(
+  (process.env.ALLOWED_ORIGINS || 'https://www.anivault.co,https://beta.anivault.co')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean),
+);
+
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.has(origin)) return callback(null, true);
+    return callback(new Error('Origin not allowed'));
+  },
+  methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Range', 'x-anivault-api-key'],
+  exposedHeaders: ['Content-Length', 'Content-Range', 'Accept-Ranges'],
+}));
 app.use(express.json());
+
+// Private server-to-server authentication for scraper API endpoints.
+// Browser media proxy routes are limited to the two AniVault site origins.
+app.use((req, res, next) => {
+  const origin = req.get('origin');
+  if (origin && !allowedOrigins.has(origin)) {
+    return res.status(403).json({ error: 'Origin not allowed' });
+  }
+
+  if (!req.path.startsWith('/api/')) return next();
+
+  const expected = process.env.ANIVAULT_API_KEY || '';
+  const supplied = req.get('x-anivault-api-key') || '';
+  let authenticated = false;
+  if (expected && supplied) {
+    const a = Buffer.from(expected);
+    const b = Buffer.from(supplied);
+    authenticated = a.length === b.length && timingSafeEqual(a, b);
+  }
+  if (authenticated) return next();
+
+  const browserProxy = /^\\/api\\/proxy\\/(?:hls|video|subtitle)$/.test(req.path)
+    && !!origin && allowedOrigins.has(origin);
+  if (browserProxy) return next();
+
+  return res.status(403).json({ error: 'Forbidden' });
+});
 
 // Rate limiting
 const limiter = rateLimit({
@@ -34,12 +76,9 @@ app.use('/discord', discordRelay);
 // line + src/image-migrator.ts once the migration is done.
 app.use('/migrate-images', imageMigrator);
 
-// Serve static docs/tester
-app.use(express.static(path.join(__dirname, '../public')));
-
-// Catch-all → docs
-app.get('*', (_req, res) => {
-  res.sendFile(path.join(__dirname, '../public/index.html'));
+// Never expose the API docs/tester at the public service root.
+app.use((_req, res) => {
+  res.status(404).type('text/plain').send('Not found');
 });
 
 app.listen(PORT, () => {
