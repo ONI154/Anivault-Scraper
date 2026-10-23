@@ -109,7 +109,7 @@ function normalizeTitle(title: string): string {
     .replace(/[’']/g, '')
     .replace(/[^a-z0-9]+/g, ' ')
     .trim()
-    .replace(/\\s+/g, ' ');
+    .replace(/\s+/g, ' ');
 }
 
 function scoreTitle(query: string, title: string): number {
@@ -151,10 +151,10 @@ export async function searchAnikoto(query: string): Promise<AnikotoSearchResult[
       const anchor = $el.is('a') ? $el : $el.find('a').first();
       const href = anchor.attr('href') ?? '';
       const slug = href
-        .replace(/^https?:\\/\\/[^/]+/, '')
-        .replace(/^\\/watch\\//, '')
-        .replace(/\\/ep-\\d+$/, '')
-        .replace(/\\/$/, '');
+        .replace(/^https?:\/\/[^/]+/, '')
+        .replace(/^\/watch\//, '')
+        .replace(/\/ep-\d+$/, '')
+        .replace(/\/$/, '');
       const title = $el.find('.name, .d-title').first().text().trim() || anchor.attr('title')?.trim() || '';
       if (!slug || !title) return;
       results.push({ slug, title });
@@ -166,7 +166,7 @@ export async function searchAnikoto(query: string): Promise<AnikotoSearchResult[
 }
 
 export async function findAnikotoSlug(title: string): Promise<string | null> {
-  const noPossessive = title.replace(/[’']s\\b/gi, '');
+  const noPossessive = title.replace(/[’']s\b/gi, '');
   // Search complete title variants only. Searching the first word or a very
   // short prefix (e.g. "JoJo") creates false positives across sequels and OVAs.
   const variants = Array.from(new Set([
