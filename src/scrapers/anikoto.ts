@@ -103,7 +103,13 @@ interface AnikotoSearchResult {
 }
 
 function normalizeTitle(title: string): string {
-  return title.toLowerCase().replace(/[^a-z0-9]/g, '');
+  return title
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[’']/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .replace(/\\s+/g, ' ');
 }
 
 function scoreTitle(query: string, title: string): number {
@@ -111,11 +117,23 @@ function scoreTitle(query: string, title: string): number {
   const hay = normalizeTitle(title);
   if (!needle || !hay) return 0;
   if (hay === needle) return 100;
-  if (hay.startsWith(needle) || needle.startsWith(hay)) return 80;
-  if (hay.includes(needle) || needle.includes(hay)) return 60;
-  let matches = 0;
-  for (const ch of needle) if (hay.includes(ch)) matches++;
-  return Math.floor((matches / Math.max(needle.length, 1)) * 40);
+
+  // Allow a full title to match a site title with an extra season/franchise
+  // suffix, but don't accept the reverse (a short query matching a specific sequel).
+  if (hay.startsWith(needle + ' ') || hay.startsWith(needle + ':')) return 90;
+
+  const queryTokens = needle.split(' ').filter(Boolean);
+  const titleTokens = hay.split(' ').filter(Boolean);
+  if (queryTokens.length < 2 || titleTokens.length < 2) return 0;
+
+  const overlap = queryTokens.filter((token) => titleTokens.includes(token)).length;
+  const queryCoverage = overlap / queryTokens.length;
+  const titleCoverage = overlap / titleTokens.length;
+
+  // Token overlap is only a secondary signal. Require the query's distinctive
+  // words to be present and reject short/common-title matches such as "JoJo".
+  if (queryCoverage >= 0.9 && titleCoverage >= 0.6) return 75;
+  return 0;
 }
 
 export async function searchAnikoto(query: string): Promise<AnikotoSearchResult[]> {
@@ -130,13 +148,14 @@ export async function searchAnikoto(query: string): Promise<AnikotoSearchResult[
   $('.items.flw-wrap .film_list-wrap .flw-item, .film_list-wrap .flw-item, .ani.items .item, section .items .item').each(
     (_, el) => {
       const $el = $(el);
-      const href = $el.attr('href') ?? $el.find('a').first().attr('href') ?? '';
+      const anchor = $el.is('a') ? $el : $el.find('a').first();
+      const href = anchor.attr('href') ?? '';
       const slug = href
-        .replace(/^https?:\/\/[^/]+/, '')
-        .replace(/^\/watch\//, '')
-        .replace(/\/ep-\d+$/, '')
-        .replace(/\/$/, '');
-      const title = $el.find('.name, .d-title').first().text().trim();
+        .replace(/^https?:\\/\\/[^/]+/, '')
+        .replace(/^\\/watch\\//, '')
+        .replace(/\\/ep-\\d+$/, '')
+        .replace(/\\/$/, '');
+      const title = $el.find('.name, .d-title').first().text().trim() || anchor.attr('title')?.trim() || '';
       if (!slug || !title) return;
       results.push({ slug, title });
     }
@@ -147,36 +166,42 @@ export async function searchAnikoto(query: string): Promise<AnikotoSearchResult[
 }
 
 export async function findAnikotoSlug(title: string): Promise<string | null> {
-  const noPossessive = title.replace(/[’']s\b/gi, '');
-  const variants = Array.from(
-    new Set(
-      [
-        title,
-        noPossessive,
-        title.replace(/[’']/g, ''),
-        noPossessive.replace(/[+]/g, ' '),
-        title.replace(/[+]/g, ' '),
-        title.split(/[:(|-]/)[0]?.trim(),
-        noPossessive.split(/[:(|-]/)[0]?.trim(),
-        title.replace(/[’']/g, '').split(/\s+/).slice(0, 2).join(' '),
-        noPossessive.split(/\s+/).slice(0, 2).join(' '),
-        title.replace(/[’']/g, '').split(/\s+/)[0],
-        noPossessive.split(/\s+/)[0],
-      ].filter((value): value is string => Boolean(value && value.trim().length >= 3))
-    )
-  );
+  const noPossessive = title.replace(/[’']s\\b/gi, '');
+  // Search complete title variants only. Searching the first word or a very
+  // short prefix (e.g. "JoJo") creates false positives across sequels and OVAs.
+  const variants = Array.from(new Set([
+    title,
+    noPossessive,
+    title.replace(/[’']/g, ''),
+    title.replace(/[+]/g, ' '),
+    noPossessive.replace(/[+]/g, ' '),
+  ].filter((value): value is string => Boolean(value && value.trim().length >= 4))));
 
   const allResults: AnikotoSearchResult[] = [];
   for (const variant of variants) {
     const results = await searchAnikoto(variant).catch(() => []);
     allResults.push(...results);
-    if (results.some((result) => scoreTitle(title, result.title) >= 80)) break;
   }
 
   const unique = Array.from(new Map(allResults.map((result) => [result.slug, result])).values());
   if (!unique.length) return null;
-  return unique.map((result) => ({ result, score: scoreTitle(title, result.title) })).sort((a, b) => b.score - a.score)[0]
-    .result.slug;
+
+  const ranked = unique
+    .map((result) => ({ result, score: scoreTitle(title, result.title) }))
+    .filter((entry) => entry.score >= 75)
+    .sort((a, b) => b.score - a.score);
+
+  // Don't guess: no sufficiently close title match means this source is
+  // unavailable for this anime rather than returning a different show.
+  if (!ranked.length) return null;
+
+  // If equally ranked candidates represent different titles, refuse to guess.
+  const bestScore = ranked[0].score;
+  const best = ranked.filter((entry) => entry.score === bestScore);
+  if (best.length > 1 && new Set(best.map((entry) => normalizeTitle(entry.result.title))).size > 1) {
+    return null;
+  }
+  return best[0].result.slug;
 }
 
 // ══════════════════════════════════════════════════════════════
