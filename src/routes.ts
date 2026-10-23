@@ -7,6 +7,7 @@ import { resolveEmbed } from './resolvers/megacloud';
 
 import { getHeavenEpisodes, getHeavenServers, getHeavenStream } from './scrapers/animeheaven';
 import { getAnikotoEpisodes, getAnikotoServers, getAnikotoEmbedUrl } from './scrapers/anikoto';
+import { getMegaPlayStream } from './scrapers/megaplay';
 import { getDesidubEpisodes, getDesidubServers, getDesidubStream } from './scrapers/desidub';
 import { getAnimeDetails, getEpisodes as getMalEpisodes, getEpisode as getMalEpisode, getAllEpisodes as getAllMalEpisodes, getCharacters, getCharacterDetails, getAnimePictures, getCharacterPictures, getAnimeThemes, getAnimeVideos, getRecommendations, searchAnime, getExternalLinks, getStreamingPlatforms, debugSearchHtml, MalEpisode } from './scrapers/mal';
 import { getSeasonNow, getTopBanners, getStreamingEpisodes, AniListStreamingEpisode, getAnimeImages as getAnilistAnimeImages } from './scrapers/anilist';
@@ -15,7 +16,7 @@ import { getKitsuAnimeId, getEpisodeThumbnail as getKitsuEpisodeThumbnail, getEp
 
 const router = Router();
 
-const SOURCES = ['animeheaven', 'anikoto', 'desidub'] as const;
+const SOURCES = ['animeheaven', 'anikoto', 'desidub', 'megaplay'] as const;
 type Source = typeof SOURCES[number];
 
 function publicBase(req: Request): string {
@@ -122,6 +123,14 @@ async function fetchEpisodes(source: Source, siteIds: any, overrides: { heavenId
     if (!slug) return { episodes: [], siteId: '', error: 'Not indexed on DesiDub' };
     return { episodes: await getDesidubEpisodes(slug), siteId: slug };
   }
+  if (source === 'megaplay') {
+    const malId = Number(siteIds.malId);
+    if (!Number.isFinite(malId) || malId <= 0) return { episodes: [], siteId: '', error: 'MegaPlay requires a valid MAL ID' };
+    const details = await getAnimeDetails(malId);
+    const count = Number(details?.episodes);
+    if (!Number.isFinite(count) || count <= 0) return { episodes: [], siteId: String(malId), error: 'Could not determine episode count for MegaPlay' };
+    return { episodes: Array.from({ length: count }, (_, i) => ({ num: i + 1, id: String(i + 1), title: `Episode ${i + 1}` })), siteId: String(malId) };
+  }
   return { episodes: [], siteId: '', error: 'Unknown source' };
 }
 
@@ -223,6 +232,7 @@ router.get('/servers', async (req: Request, res: Response) => {
     if (source === 'animeheaven') allServers = await getHeavenServers(episode.id, `https://animeheaven.me/anime.php?${epResult.siteId}`);
     if (source === 'anikoto') allServers = await getAnikotoServers(episode.id);
     if (source === 'desidub') allServers = await getDesidubServers(episode.id);
+    if (source === 'megaplay') allServers = [{ name: 'MegaPlay Direct', sourceId: String(epNum), type: type === 'dub' ? 'dub' : 'sub' }];
 
     const filtered = type === 'all' ? allServers : allServers.filter((s: any) => s.type === type);
     return res.json({
@@ -259,6 +269,30 @@ async function watchHandler(req: Request, res: Response) {
       ? { anilistId: null, malId: null, title: null, siteIds: { animeheaven: id } }
       : await resolveSiteIds(anilistId, malId);
     if (!siteIds) return res.status(404).json({ error: 'Could not resolve anime' });
+
+    if (source === 'megaplay') {
+      const stream = await getMegaPlayStream(siteIds.malId, siteIds.anilistId, epNum, type as 'sub' | 'dub');
+      if (!stream) return res.status(502).json({ error: `MegaPlay failed to resolve a stream for episode ${epNum}`, source: 'megaplay' });
+      return res.json({
+        anilistId: siteIds.anilistId,
+        malId: siteIds.malId,
+        title: siteIds.title,
+        episode: epNum,
+        type,
+        source,
+        server: 'MegaPlay Direct',
+        availableServers: ['MegaPlay Direct'],
+        embedUrl: stream.embedUrl,
+        m3u8: stream.m3u8,
+        hlsProxyUrl: stream.m3u8 ? proxiedHlsUrl(req, stream.m3u8, stream.referer) : null,
+        playbackMode: stream.m3u8 ? 'hls' : 'iframe',
+        iframeOnly: !stream.m3u8,
+        subtitles: (stream.subtitles ?? []).map((s: any) => ({ ...s, url: proxiedSubtitleUrl(req, s.url, stream.referer) })),
+        intro: null,
+        outro: null,
+        note: stream.m3u8 ? null : 'No HLS stream extracted; use embedUrl in an iframe.',
+      });
+    }
 
     const epResult = await fetchEpisodes(source as Source, siteIds, { heavenId: heavenOverride });
     if (epResult.error) return res.status(404).json({ error: epResult.error });
