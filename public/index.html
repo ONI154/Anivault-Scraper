@@ -159,6 +159,9 @@ pre { padding:20px; overflow-x:auto; font-family:var(--mono); font-size:12px; li
 .source-icon { font-size:20px; margin-bottom:6px; }
 .source-name { font-size:11px; font-weight:700; color:var(--text); display:block; }
 .source-url { font-family:var(--mono); font-size:9px; color:var(--muted); margin-top:2px; display:block; }
+.hosting-warning { margin:-4px 0 20px; padding:14px 16px; border:1px solid rgba(245,158,11,0.4); border-radius:8px; background:rgba(245,158,11,0.08); color:var(--text); font-size:12px; line-height:1.6; }
+.hosting-warning strong { display:block; color:var(--warning); margin-bottom:4px; }
+.hosting-warning p { color:var(--muted); }
 
 .server-chips { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; min-height:38px; align-items:flex-start; }
 .server-chip { font-family:var(--mono); font-size:11px; padding:6px 14px; border-radius:100px; border:1px solid var(--border); color:var(--muted); cursor:pointer; transition:all 0.15s; background:var(--bg); white-space:nowrap; }
@@ -343,7 +346,7 @@ pre { padding:20px; overflow-x:auto; font-family:var(--mono); font-size:12px; li
         <div class="sic-header">
           <div class="sic-icon">🎭</div>
           <div><div class="sic-name">AnimeHeaven</div><div class="sic-url">animeheaven.me</div></div>
-          <span class="sic-tag works">Direct MP4</span>
+          <span class="sic-tag verify">Not on Vercel</span>
         </div>
         <div class="sic-row"><span class="sic-row-label">Key</span><span class="sic-row-val">animeheaven</span></div>
         <div class="sic-row"><span class="sic-row-label">ID format</span><span class="sic-row-val">AnimeHeaven show ID</span></div>
@@ -1219,6 +1222,10 @@ GET /api/watch?source=<span class="str">animeheaven</span>&heavenId=<span class=
             <span class="source-url">desidubanime.me</span>
           </div>
         </div>
+        <div id="animeHeavenVercelNotice" class="hosting-warning" role="status" style="display:none">
+          <strong>⚠️ AnimeHeaven hosting limitation</strong>
+          <p>AnimeHeaven does not work when this API is deployed on Vercel. Test it using a local deployment or Railway instead. A failure on Vercel does not necessarily mean the scraper is broken.</p>
+        </div>
 
         <!-- SERVER SELECTION -->
         <div style="margin-bottom:20px">
@@ -1432,6 +1439,7 @@ function setSource(s, card) {
   document.querySelectorAll('.source-card').forEach(c => c.classList.remove('active'));
   card.classList.add('active');
   document.getElementById('heavenIdWrap').style.display = s === 'animeheaven' ? 'block' : 'none';
+  document.getElementById('animeHeavenVercelNotice').style.display = s === 'animeheaven' ? 'block' : 'none';
   resetServers();
   updateUrlPreview();
   if (selAnime && document.getElementById('epInput').value) loadServers();
