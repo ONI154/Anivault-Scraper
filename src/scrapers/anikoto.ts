@@ -996,3 +996,11 @@ export async function getAnikotoEmbedUrl(sourceId: string): Promise<AnikotoStrea
     return null;
   }
 }
+
+
+// Public entry point for MegaPlay's direct ID endpoints. The endpoint returns a
+// player page, not a stream URL; reuse the existing MegaPlay player extractor
+// (including enc decryption and signed-URL generation) without Anikoto title search.
+export async function resolveMegaPlayPlayer(playerUrl: string) {
+  return resolveAnikotoEmbed(playerUrl, 'MegaPlay Direct');
+}
