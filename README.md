@@ -51,7 +51,7 @@ there's no multi-step resolution required the way playback has.
 
 | Source | Status | Notes |
 |---|---|---|
-| **AnimeHeaven** (animeheaven.me) | ⚠️ Hosting-limited | Does not work on Vercel deployments; test locally or on Railway |
+| **AnimeHeaven** (animeheaven.me) | ⚠️ Hosting-limited | Does not work on Vercel; deploy on Railway or test locally |
 | **Anikoto** (anikoto.net) | ✅ Verified | Megacloud/Megaplay decryption + a direct-CDN side channel |
 
 ### Metadata & art
@@ -226,6 +226,6 @@ One call instead of chaining several.
 
 ## Status
 
-AnimeHeaven does not work when this API is deployed on Vercel. Test it using a local deployment or Railway instead; a failure on Vercel does not necessarily mean the scraper itself is broken. Anikoto is also available for streaming. The MAL scraper
+AnimeHeaven does not work when this API is deployed on Vercel. Use Railway or a local deployment to run/test AnimeHeaven instead; a failure on Vercel does not necessarily mean the scraper itself is broken. Anikoto is also available for streaming. The MAL scraper
 covers anime/character details, episodes, pictures, theme songs, trailers,
 and recommendations, backed by TMDB/Kitsu/AniList for art and thumbnails.
