@@ -368,6 +368,18 @@ pre { padding:20px; overflow-x:auto; font-family:var(--mono); font-size:12px; li
 
       <div class="source-info-card">
         <div class="sic-header">
+          <div class="sic-icon">▶️</div>
+          <div><div class="sic-name">MegaPlay Direct</div><div class="sic-url">megaplay.buzz</div></div>
+          <span class="sic-tag verify">Direct-ID</span>
+        </div>
+        <div class="sic-row"><span class="sic-row-label">Key</span><span class="sic-row-val">megaplay</span></div>
+        <div class="sic-row"><span class="sic-row-label">ID format</span><span class="sic-row-val">MAL ID or AniList ID</span></div>
+        <div class="sic-row"><span class="sic-row-label">Streams</span><span class="sic-row-val">Player page → HLS resolver</span></div>
+        <div class="sic-row"><span class="sic-row-label">Audio</span><span class="sic-row-val">Sub / Dub (upstream dependent)</span></div>
+      </div>
+
+      <div class="source-info-card">
+        <div class="sic-header">
           <div class="sic-icon">🇮🇳</div>
           <div><div class="sic-name">DesiDub</div><div class="sic-url">desidubanime.me</div></div>
           <span class="sic-tag works">Multi-Audio & Dub</span>
@@ -1221,6 +1233,11 @@ GET /api/watch?source=<span class="str">animeheaven</span>&heavenId=<span class=
             <span class="source-name">DesiDub</span>
             <span class="source-url">desidubanime.me</span>
           </div>
+          <div class="source-card" onclick="setSource('megaplay',this)" id="src-megaplay">
+            <div class="source-icon">▶️</div>
+            <span class="source-name">MegaPlay Direct</span>
+            <span class="source-url">megaplay.buzz</span>
+          </div>
         </div>
         <div id="animeHeavenVercelNotice" class="hosting-warning" role="status" style="display:none">
           <strong>⚠️ AnimeHeaven hosting limitation</strong>
@@ -1868,9 +1885,9 @@ function setTesterMode(mode, btn) {
 const ENDPOINT_REGISTRY = [
   { cat:'Streaming', method:'GET', path:'/api/search', desc:'AniList text search (MAL fallback if AniList is down)', query:[['q',true,'naruto'],['limit',false,'10']] },
   { cat:'Streaming', method:'GET', path:'/api/info', desc:'Resolve AniList/MAL IDs for a show', query:[['anilistId',false,'20'],['malId',false,'20']] },
-  { cat:'Streaming', method:'GET', path:'/api/episodes', desc:'Streaming-source episode list', query:[['anilistId',false,'20'],['malId',false,'20'],['source',false,'anikoto']] },
-  { cat:'Streaming', method:'GET', path:'/api/servers', desc:'Available servers for one episode', query:[['anilistId',false,'20'],['malId',false,'20'],['ep',true,'1'],['type',false,'sub'],['source',false,'anikoto'],['heavenId',false,'']] },
-  { cat:'Streaming', method:'GET', path:'/api/watch', desc:'Resolve a playable stream', query:[['anilistId',false,'20'],['malId',false,'20'],['heavenId',false,''],['ep',true,'1'],['type',false,'sub'],['source',false,'anikoto'],['server',false,'']] },
+  { cat:'Streaming', method:'GET', path:'/api/episodes', desc:'Streaming-source episode list (MegaPlay Direct uses MAL episode count)', query:[['anilistId',false,'20'],['malId',false,'20899'],['source',false,'megaplay']] },
+  { cat:'Streaming', method:'GET', path:'/api/servers', desc:'Available servers for one episode', query:[['anilistId',false,'20'],['malId',false,'20899'],['ep',true,'1'],['type',false,'sub'],['source',false,'megaplay'],['heavenId',false,'']] },
+  { cat:'Streaming', method:'GET', path:'/api/watch', desc:'Resolve a playable stream (MegaPlay Direct defaults to MAL ID 20899)', query:[['anilistId',false,''],['malId',false,'20899'],['heavenId',false,''],['ep',true,'1'],['type',false,'sub'],['source',false,'megaplay'],['server',false,'']] },
   { cat:'Streaming', method:'GET', path:'/api/health', desc:'Service status + source list', query:[] },
 
   { cat:'MAL Scraper', method:'GET', path:'/api/mal/anime/{id}', desc:'Full anime details', pathParams:['id'], pathPlaceholders:{id:'16498'}, query:[] },
