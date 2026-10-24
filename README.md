@@ -53,7 +53,8 @@ there's no multi-step resolution required the way playback has.
 |---|---|---|
 | **AnimeHeaven** (animeheaven.me) | ⚠️ Hosting-limited | Does not work on Vercel; deploy on Railway or test locally |
 | **Anikoto** (anikoto.net) | ✅ Verified | Megacloud/Megaplay decryption + a direct-CDN side channel |
-| **DesiDub** (desidubanime.me) | ✅ Integrated | Multi-audio and dubbed episodes; supports episode/server listing and stream resolution |\n| **MegaPlay** (megaplay.buzz) | 🧪 Integrated | Direct MAL/AniList ID endpoints; resolves the player page to HLS without Anikoto title search |
+| **DesiDub** (desidubanime.me) | ✅ Integrated | Multi-audio and dubbed episodes; supports episode/server listing and stream resolution |
+| **MegaPlay Direct** (megaplay.buzz) | ✅ Working | Uses MAL/AniList IDs directly and resolves the player page to HLS without Anikoto title search |
 
 ### Metadata & art
 
@@ -97,8 +98,11 @@ List episodes for a title on a given source.
 | `heavenId` | no | manual AnimeHeaven show id |
 ```
 GET /api/episodes?anilistId=20&source=anikoto
+GET /api/episodes?malId=20899&source=megaplay
 → { anilistId, malId, title, source, siteId, count, episodes[] }
 ```
+
+For **MegaPlay Direct**, the episode list is based on the anime's MAL episode count; no Anikoto title search is used.
 
 #### `GET /api/servers`
 List available servers (sub/dub) for a specific episode.
@@ -111,6 +115,7 @@ List available servers (sub/dub) for a specific episode.
 | `heavenId` | no | manual AnimeHeaven show id |
 ```
 GET /api/servers?anilistId=20&ep=1&type=sub&source=anikoto
+GET /api/servers?malId=20899&ep=1&type=sub&source=megaplay
 → { anilistId, malId, title, episode, type, source, servers[] }
 ```
 
@@ -131,6 +136,7 @@ Resolve a real, playable stream for an episode — the main playback endpoint.
 ```
 GET /api/watch/anikoto/20/1/sub
 GET /api/watch/anikoto/mal-21/5/dub?server=Megacloud
+GET /api/watch/megaplay/mal-20899/1/sub
 → { embedUrl, m3u8, hlsProxyUrl, playbackMode, subtitles[], server, availableServers[], ... }
 ```
 
