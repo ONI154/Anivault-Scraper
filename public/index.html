@@ -392,6 +392,251 @@ pre { padding:20px; overflow-x:auto; font-family:var(--mono); font-size:12px; li
     </div>
   </section>
 
+  <!-- API TESTER -->
+  <section class="section" id="tester">
+    <div class="section-title">API Tester</div>
+    <div class="section-sub">Two ways in: the guided streaming flow (search → source → server → watch), or a raw form for any of the ~35 documented endpoints.</div>
+
+    <div class="tester-mode-switch">
+      <button class="tester-mode-btn active" onclick="setTesterMode('streaming', this)">🎬 Watch &amp; Stream</button>
+      <button class="tester-mode-btn" onclick="setTesterMode('generic', this)">🧰 All Endpoints</button>
+    </div>
+
+    <div id="tester-panel-streaming" class="tester-panel active">
+    <div class="tester-wrap">
+      <div class="tester-top">
+        <div class="tester-dot" style="background:#ff5f57"></div>
+        <div class="tester-dot" style="background:#febc2e"></div>
+        <div class="tester-dot" style="background:#28c840"></div>
+        <span style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-left:8px">anivault-api · tester</span>
+      </div>
+
+      <div class="tester-body">
+
+        <!-- SEARCH -->
+        <div style="margin-bottom:20px">
+          <label class="field-label">Search Anime</label>
+          <div class="search-wrap">
+            <div style="display:flex;gap:8px">
+              <input class="field-input" id="searchInput" placeholder="e.g. Naruto, Demon Slayer, One Piece..." oninput="debouncedSearch()" autocomplete="off" />
+              <button onclick="doSearch()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:12px 20px;border-radius:8px;font-family:var(--sans);font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap;transition:all 0.15s" onmouseover="this.style.borderColor='var(--accent2)'" onmouseout="this.style.borderColor='var(--border)'">Search</button>
+            </div>
+            <div id="searchResults"></div>
+          </div>
+        </div>
+
+        <!-- SELECTED ANIME -->
+        <div class="selected-anime" id="selectedAnime">
+          <img class="sel-cover" id="selCover" src="" alt="" onerror="this.style.display='none'" />
+          <div style="flex:1">
+            <div class="sel-title" id="selTitle"></div>
+            <div class="sel-meta">
+              <span>AniList <b id="selAlId"></b></span>
+              <span>MAL <b id="selMalId"></b></span>
+              <span>Eps <b id="selEps"></b></span>
+              <span id="selFormat"></span>
+            </div>
+          </div>
+          <button class="clear-btn" onclick="clearSelection()">×</button>
+        </div>
+
+        <!-- ANIMEHEAVEN ID -->
+        <div id="heavenIdWrap" style="margin-bottom:20px;display:none">
+          <label class="field-label">AnimeHeaven ID</label>
+          <input class="field-input" id="heavenIdInput" placeholder="Paste AnimeHeaven anime id, e.g. ukr6y" autocomplete="off" />
+          <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:6px">Use this when title mapping misses the exact AnimeHeaven show.</div>
+        </div>
+
+        <!-- EP / TYPE / ENDPOINT -->
+        <div class="field-row-3" style="margin-bottom:20px">
+          <div>
+            <label class="field-label">Episode Number</label>
+            <input class="field-input" id="epInput" type="number" min="1" value="1" placeholder="1" onchange="onEpChange()" />
+          </div>
+          <div>
+            <label class="field-label">Audio Type</label>
+            <div class="seg-control">
+              <button class="seg-btn active" onclick="setType('sub',this)">SUB</button>
+              <button class="seg-btn" onclick="setType('dub',this)">DUB</button>
+              <button class="seg-btn" onclick="setType('raw',this)">RAW</button>
+            </div>
+          </div>
+          <div>
+            <label class="field-label">Endpoint</label>
+            <div class="seg-control">
+              <button class="seg-btn active" onclick="setEndpoint('watch',this)">Watch</button>
+              <button class="seg-btn" onclick="setEndpoint('servers',this)">Servers</button>
+              <button class="seg-btn" onclick="setEndpoint('episodes',this)">Episodes</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- SOURCE -->
+        <label class="field-label">Source</label>
+        <div class="source-grid" style="margin-bottom:20px;grid-template-columns:repeat(3,1fr);">
+          <div class="source-card active" onclick="setSource('anikoto',this)" id="src-anikoto">
+            <div class="source-icon">🦊</div>
+            <span class="source-name">Anikoto</span>
+            <span class="source-url">anikoto.net</span>
+          </div>
+          <div class="source-card" onclick="setSource('animeheaven',this)" id="src-animeheaven">
+            <div class="source-icon">🎭</div>
+            <span class="source-name">AnimeHeaven</span>
+            <span class="source-url">animeheaven.me</span>
+          </div>
+          <div class="source-card" onclick="setSource('desidub',this)" id="src-desidub">
+            <div class="source-icon">🇮🇳</div>
+            <span class="source-name">DesiDub</span>
+            <span class="source-url">desidubanime.me</span>
+          </div>
+          <div class="source-card" onclick="setSource('megaplay',this)" id="src-megaplay">
+            <div class="source-icon">▶️</div>
+            <span class="source-name">MegaPlay Direct</span>
+            <span class="source-url">megaplay.buzz</span>
+          </div>
+        </div>
+        <div id="animeHeavenVercelNotice" class="hosting-warning" role="status" style="display:none">
+          <strong>⚠️ AnimeHeaven hosting limitation</strong>
+          <p>AnimeHeaven does not work when this API is deployed on Vercel. Deploy the API on Railway or test it locally instead. A failure on Vercel does not necessarily mean the scraper is broken.</p>
+        </div>
+
+        <!-- SERVER SELECTION -->
+        <div style="margin-bottom:20px">
+          <label class="field-label">Server
+            <span id="serverLoadingLabel" style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;margin-left:8px;display:none">
+              <span class="spinner" style="width:10px;height:10px;border-width:1.5px"></span>
+            </span>
+          </label>
+          <div class="server-chips" id="serverChips">
+            <div class="server-chip auto active" data-server="" onclick="selectServer(this)">⚡ Auto</div>
+          </div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:6px">Select an anime + episode first to load available servers</div>
+        </div>
+
+        <!-- BASE URL -->
+        <div style="margin-bottom:24px">
+          <label class="field-label">API Base URL</label>
+          <input class="field-input" id="baseUrl" placeholder="https://your-app.up.railway.app (blank = this server)" />
+        </div>
+
+        <!-- GENERATED URL PREVIEW -->
+        <div id="urlPreview" style="font-family:var(--mono);font-size:11px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px 16px;margin-bottom:16px;color:var(--muted);word-break:break-all">
+          <span style="color:var(--muted)">URL will appear here</span>
+        </div>
+
+        <button class="fetch-btn" id="fetchBtn" onclick="doFetch()">⚡ Fetch Stream Data</button>
+
+        <!-- RESULTS -->
+        <div class="result-area" id="resultArea">
+          <div class="divider"></div>
+
+          <div class="status-bar" id="statusBar" style="display:none">
+            <div class="status-dot" id="statusDot"></div>
+            <span class="status-url" id="statusUrl"></span>
+            <span id="statusCode"></span>
+          </div>
+
+          <div class="result-tabs">
+            <button class="result-tab active" onclick="setTab('response',this)">JSON</button>
+            <button class="result-tab" onclick="setTab('stream',this)">Stream Info</button>
+            <button class="result-tab" onclick="setTab('embed',this)">Embed Preview</button>
+          </div>
+
+          <div class="result-pane active" id="pane-response">
+            <div class="result-json">
+              <div class="code-header">Response <button class="copy-btn" onclick="copyResult()">Copy</button></div>
+              <pre id="jsonOutput"></pre>
+            </div>
+          </div>
+
+          <div class="result-pane" id="pane-stream">
+            <div class="stream-cards" id="streamCards">
+              <div class="stream-card" style="grid-column:1/-1">
+                <div class="stream-card-label">Waiting</div>
+                <div class="stream-card-val null-val">Fetch data first</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="result-pane" id="pane-embed">
+            <div class="embed-preview" id="embedPreview">
+              <div class="embed-placeholder">
+                <div class="embed-placeholder-icon">▶</div>
+                <span>Embed preview will appear here after fetch</span>
+              </div>
+            </div>
+            <div class="embed-sub-bar" id="embedSubBar"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    </div>
+    <!-- /tester-panel-streaming -->
+
+    <div id="tester-panel-generic" class="tester-panel">
+      <div class="tester-wrap">
+        <div class="tester-top">
+          <div class="tester-dot" style="background:#ff5f57"></div>
+          <div class="tester-dot" style="background:#febc2e"></div>
+          <div class="tester-dot" style="background:#28c840"></div>
+          <span style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-left:8px">anivault-api · endpoint tester</span>
+        </div>
+        <div class="tester-body">
+
+          <div class="generic-tester-layout">
+            <div class="generic-endpoint-list">
+              <input class="field-input" id="genFilter" placeholder="Filter endpoints..." oninput="renderEndpointList()" autocomplete="off" style="margin-bottom:12px;" />
+              <div id="genEndpointList"></div>
+            </div>
+
+            <div class="generic-form-area">
+              <div id="genEmptyState" style="color:var(--muted);font-family:var(--mono);font-size:12px;padding:40px 0;text-align:center;">
+                ← Pick an endpoint to build a request
+              </div>
+
+              <div id="genFormWrap" style="display:none;">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;flex-wrap:wrap;">
+                  <span class="ep-method" id="genMethodBadge">GET</span>
+                  <span id="genPathLabel" style="font-family:var(--mono);font-size:13px;color:var(--text);font-weight:600;overflow-wrap:anywhere;"></span>
+                </div>
+                <div id="genDescLabel" style="color:var(--muted);font-size:12px;margin-bottom:18px;"></div>
+
+                <div id="genParamFields"></div>
+
+                <div style="margin:20px 0;">
+                  <label class="field-label">API Base URL</label>
+                  <input class="field-input" id="genBaseUrl" placeholder="https://your-app.up.railway.app (blank = this server)" oninput="updateGenUrlPreview()" />
+                </div>
+
+                <div id="genUrlPreview" style="font-family:var(--mono);font-size:11px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px 16px;margin-bottom:16px;color:var(--muted);word-break:break-all;"></div>
+
+                <button class="fetch-btn" id="genFetchBtn" onclick="doGenericFetch()">⚡ Send Request</button>
+
+                <div class="result-area" id="genResultArea">
+                  <div class="divider"></div>
+                  <div class="status-bar" id="genStatusBar" style="display:none;">
+                    <div class="status-dot" id="genStatusDot"></div>
+                    <span class="status-url" id="genStatusUrl"></span>
+                    <span id="genStatusCode"></span>
+                  </div>
+                  <div id="genSmartPreview"></div>
+                  <div class="result-json">
+                    <div class="code-header">Response <button class="copy-btn" onclick="copyGenResult()">Copy</button></div>
+                    <pre id="genJsonOutput"></pre>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+    <!-- /tester-panel-generic -->
+
+  </section>
+
   <!-- URL STRUCTURE -->
   <section class="section" id="structure">
     <div class="section-title">URL Structure</div>
@@ -1137,249 +1382,7 @@ GET /api/watch?source=<span class="str">animeheaven</span>&heavenId=<span class=
   </section>
 
 
-  <section class="section" id="tester">
-    <div class="section-title">API Tester</div>
-    <div class="section-sub">Two ways in: the guided streaming flow (search → source → server → watch), or a raw form for any of the ~35 documented endpoints.</div>
 
-    <div class="tester-mode-switch">
-      <button class="tester-mode-btn active" onclick="setTesterMode('streaming', this)">🎬 Watch &amp; Stream</button>
-      <button class="tester-mode-btn" onclick="setTesterMode('generic', this)">🧰 All Endpoints</button>
-    </div>
-
-    <div id="tester-panel-streaming" class="tester-panel active">
-    <div class="tester-wrap">
-      <div class="tester-top">
-        <div class="tester-dot" style="background:#ff5f57"></div>
-        <div class="tester-dot" style="background:#febc2e"></div>
-        <div class="tester-dot" style="background:#28c840"></div>
-        <span style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-left:8px">anivault-api · tester</span>
-      </div>
-
-      <div class="tester-body">
-
-        <!-- SEARCH -->
-        <div style="margin-bottom:20px">
-          <label class="field-label">Search Anime</label>
-          <div class="search-wrap">
-            <div style="display:flex;gap:8px">
-              <input class="field-input" id="searchInput" placeholder="e.g. Naruto, Demon Slayer, One Piece..." oninput="debouncedSearch()" autocomplete="off" />
-              <button onclick="doSearch()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:12px 20px;border-radius:8px;font-family:var(--sans);font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap;transition:all 0.15s" onmouseover="this.style.borderColor='var(--accent2)'" onmouseout="this.style.borderColor='var(--border)'">Search</button>
-            </div>
-            <div id="searchResults"></div>
-          </div>
-        </div>
-
-        <!-- SELECTED ANIME -->
-        <div class="selected-anime" id="selectedAnime">
-          <img class="sel-cover" id="selCover" src="" alt="" onerror="this.style.display='none'" />
-          <div style="flex:1">
-            <div class="sel-title" id="selTitle"></div>
-            <div class="sel-meta">
-              <span>AniList <b id="selAlId"></b></span>
-              <span>MAL <b id="selMalId"></b></span>
-              <span>Eps <b id="selEps"></b></span>
-              <span id="selFormat"></span>
-            </div>
-          </div>
-          <button class="clear-btn" onclick="clearSelection()">×</button>
-        </div>
-
-        <!-- ANIMEHEAVEN ID -->
-        <div id="heavenIdWrap" style="margin-bottom:20px;display:none">
-          <label class="field-label">AnimeHeaven ID</label>
-          <input class="field-input" id="heavenIdInput" placeholder="Paste AnimeHeaven anime id, e.g. ukr6y" autocomplete="off" />
-          <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:6px">Use this when title mapping misses the exact AnimeHeaven show.</div>
-        </div>
-
-        <!-- EP / TYPE / ENDPOINT -->
-        <div class="field-row-3" style="margin-bottom:20px">
-          <div>
-            <label class="field-label">Episode Number</label>
-            <input class="field-input" id="epInput" type="number" min="1" value="1" placeholder="1" onchange="onEpChange()" />
-          </div>
-          <div>
-            <label class="field-label">Audio Type</label>
-            <div class="seg-control">
-              <button class="seg-btn active" onclick="setType('sub',this)">SUB</button>
-              <button class="seg-btn" onclick="setType('dub',this)">DUB</button>
-              <button class="seg-btn" onclick="setType('raw',this)">RAW</button>
-            </div>
-          </div>
-          <div>
-            <label class="field-label">Endpoint</label>
-            <div class="seg-control">
-              <button class="seg-btn active" onclick="setEndpoint('watch',this)">Watch</button>
-              <button class="seg-btn" onclick="setEndpoint('servers',this)">Servers</button>
-              <button class="seg-btn" onclick="setEndpoint('episodes',this)">Episodes</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- SOURCE -->
-        <label class="field-label">Source</label>
-        <div class="source-grid" style="margin-bottom:20px;grid-template-columns:repeat(3,1fr);">
-          <div class="source-card active" onclick="setSource('anikoto',this)" id="src-anikoto">
-            <div class="source-icon">🦊</div>
-            <span class="source-name">Anikoto</span>
-            <span class="source-url">anikoto.net</span>
-          </div>
-          <div class="source-card" onclick="setSource('animeheaven',this)" id="src-animeheaven">
-            <div class="source-icon">🎭</div>
-            <span class="source-name">AnimeHeaven</span>
-            <span class="source-url">animeheaven.me</span>
-          </div>
-          <div class="source-card" onclick="setSource('desidub',this)" id="src-desidub">
-            <div class="source-icon">🇮🇳</div>
-            <span class="source-name">DesiDub</span>
-            <span class="source-url">desidubanime.me</span>
-          </div>
-          <div class="source-card" onclick="setSource('megaplay',this)" id="src-megaplay">
-            <div class="source-icon">▶️</div>
-            <span class="source-name">MegaPlay Direct</span>
-            <span class="source-url">megaplay.buzz</span>
-          </div>
-        </div>
-        <div id="animeHeavenVercelNotice" class="hosting-warning" role="status" style="display:none">
-          <strong>⚠️ AnimeHeaven hosting limitation</strong>
-          <p>AnimeHeaven does not work when this API is deployed on Vercel. Deploy the API on Railway or test it locally instead. A failure on Vercel does not necessarily mean the scraper is broken.</p>
-        </div>
-
-        <!-- SERVER SELECTION -->
-        <div style="margin-bottom:20px">
-          <label class="field-label">Server
-            <span id="serverLoadingLabel" style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;margin-left:8px;display:none">
-              <span class="spinner" style="width:10px;height:10px;border-width:1.5px"></span>
-            </span>
-          </label>
-          <div class="server-chips" id="serverChips">
-            <div class="server-chip auto active" data-server="" onclick="selectServer(this)">⚡ Auto</div>
-          </div>
-          <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:6px">Select an anime + episode first to load available servers</div>
-        </div>
-
-        <!-- BASE URL -->
-        <div style="margin-bottom:24px">
-          <label class="field-label">API Base URL</label>
-          <input class="field-input" id="baseUrl" placeholder="https://your-app.up.railway.app (blank = this server)" />
-        </div>
-
-        <!-- GENERATED URL PREVIEW -->
-        <div id="urlPreview" style="font-family:var(--mono);font-size:11px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px 16px;margin-bottom:16px;color:var(--muted);word-break:break-all">
-          <span style="color:var(--muted)">URL will appear here</span>
-        </div>
-
-        <button class="fetch-btn" id="fetchBtn" onclick="doFetch()">⚡ Fetch Stream Data</button>
-
-        <!-- RESULTS -->
-        <div class="result-area" id="resultArea">
-          <div class="divider"></div>
-
-          <div class="status-bar" id="statusBar" style="display:none">
-            <div class="status-dot" id="statusDot"></div>
-            <span class="status-url" id="statusUrl"></span>
-            <span id="statusCode"></span>
-          </div>
-
-          <div class="result-tabs">
-            <button class="result-tab active" onclick="setTab('response',this)">JSON</button>
-            <button class="result-tab" onclick="setTab('stream',this)">Stream Info</button>
-            <button class="result-tab" onclick="setTab('embed',this)">Embed Preview</button>
-          </div>
-
-          <div class="result-pane active" id="pane-response">
-            <div class="result-json">
-              <div class="code-header">Response <button class="copy-btn" onclick="copyResult()">Copy</button></div>
-              <pre id="jsonOutput"></pre>
-            </div>
-          </div>
-
-          <div class="result-pane" id="pane-stream">
-            <div class="stream-cards" id="streamCards">
-              <div class="stream-card" style="grid-column:1/-1">
-                <div class="stream-card-label">Waiting</div>
-                <div class="stream-card-val null-val">Fetch data first</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="result-pane" id="pane-embed">
-            <div class="embed-preview" id="embedPreview">
-              <div class="embed-placeholder">
-                <div class="embed-placeholder-icon">▶</div>
-                <span>Embed preview will appear here after fetch</span>
-              </div>
-            </div>
-            <div class="embed-sub-bar" id="embedSubBar"></div>
-          </div>
-        </div>
-
-      </div>
-    </div>
-    </div>
-    <!-- /tester-panel-streaming -->
-
-    <div id="tester-panel-generic" class="tester-panel">
-      <div class="tester-wrap">
-        <div class="tester-top">
-          <div class="tester-dot" style="background:#ff5f57"></div>
-          <div class="tester-dot" style="background:#febc2e"></div>
-          <div class="tester-dot" style="background:#28c840"></div>
-          <span style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-left:8px">anivault-api · endpoint tester</span>
-        </div>
-        <div class="tester-body">
-
-          <div class="generic-tester-layout">
-            <div class="generic-endpoint-list">
-              <input class="field-input" id="genFilter" placeholder="Filter endpoints..." oninput="renderEndpointList()" autocomplete="off" style="margin-bottom:12px;" />
-              <div id="genEndpointList"></div>
-            </div>
-
-            <div class="generic-form-area">
-              <div id="genEmptyState" style="color:var(--muted);font-family:var(--mono);font-size:12px;padding:40px 0;text-align:center;">
-                ← Pick an endpoint to build a request
-              </div>
-
-              <div id="genFormWrap" style="display:none;">
-                <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;flex-wrap:wrap;">
-                  <span class="ep-method" id="genMethodBadge">GET</span>
-                  <span id="genPathLabel" style="font-family:var(--mono);font-size:13px;color:var(--text);font-weight:600;overflow-wrap:anywhere;"></span>
-                </div>
-                <div id="genDescLabel" style="color:var(--muted);font-size:12px;margin-bottom:18px;"></div>
-
-                <div id="genParamFields"></div>
-
-                <div style="margin:20px 0;">
-                  <label class="field-label">API Base URL</label>
-                  <input class="field-input" id="genBaseUrl" placeholder="https://your-app.up.railway.app (blank = this server)" oninput="updateGenUrlPreview()" />
-                </div>
-
-                <div id="genUrlPreview" style="font-family:var(--mono);font-size:11px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px 16px;margin-bottom:16px;color:var(--muted);word-break:break-all;"></div>
-
-                <button class="fetch-btn" id="genFetchBtn" onclick="doGenericFetch()">⚡ Send Request</button>
-
-                <div class="result-area" id="genResultArea">
-                  <div class="divider"></div>
-                  <div class="status-bar" id="genStatusBar" style="display:none;">
-                    <div class="status-dot" id="genStatusDot"></div>
-                    <span class="status-url" id="genStatusUrl"></span>
-                    <span id="genStatusCode"></span>
-                  </div>
-                  <div id="genSmartPreview"></div>
-                  <div class="result-json">
-                    <div class="code-header">Response <button class="copy-btn" onclick="copyGenResult()">Copy</button></div>
-                    <pre id="genJsonOutput"></pre>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-        </div>
-      </div>
-    </div>
-    <!-- /tester-panel-generic -->
-
-  </section>
 
   <!-- ERRORS -->
   <section class="section" id="errors">
